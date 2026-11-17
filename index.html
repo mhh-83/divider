@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>قنادی کسرها | آموزش مفهومی تقسیم کسر بر عدد کامل</title>
+    <!-- فونت وزیرمتن برای نمایش زیبا و خوانای فارسی -->
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <!-- تیلویند برای طراحی واکنش‌گرا -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- کتابخانه Tone.js برای تولید افکت‌های صوتی شاد بدون نیاز به فایل خارجی -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            background: linear-gradient(135deg, #FEF9C3 0%, #FFEDD5 50%, #FCE7F3 100%);
+            min-height: 100vh;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        /* انیمیشن‌های اختصاصی بازی */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.7); opacity: 0; }
+            80% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .pop-in {
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes sliceFlash {
+            0% { background-color: rgba(255, 255, 255, 0.9); }
+            100% { background-color: transparent; }
+        }
+        .slice-flash {
+            animation: sliceFlash 0.5s ease-out;
+        }
+
+        /* استایل خط کسر ریاضی */
+        .fraction {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            vertical-align: middle;
+            margin: 0 4px;
+            font-weight: 800;
+            line-height: 1.1;
+        }
+        .fraction-top {
+            border-bottom: 3px solid currentColor;
+            padding: 0 6px 2px 6px;
+        }
+        .fraction-bottom {
+            padding: 2px 6px 0 6px;
+        }
+
+        /* دکمه‌های سه‌بعدی کودکانه */
+        .btn-3d {
+            transition: all 0.15s ease;
+            box-shadow: 0 5px 0 rgba(0, 0, 0, 0.18);
+        }
+        .btn-3d:active {
+            transform: translateY(4px);
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
+        }
+
+        /* بافت شکلاتی و کیکی برای اشکال */
+        .choco-piece {
+            background: linear-gradient(145deg, #92400E, #78350F);
+            box-shadow: inset 2px 2px 4px rgba(255,255,255,0.25), inset -2px -2px 4px rgba(0,0,0,0.4);
+        }
+        .empty-piece {
+            background: repeating-linear-gradient(
+                45deg,
+                #F3F4F6,
+                #F3F4F6 10px,
+                #E5E7EB 10px,
+                #E5E7EB 20px
+            );
+        }
+        .share-highlight {
+            background: linear-gradient(145deg, #F59E0B, #D97706) !important;
+            box-shadow: inset 0 0 0 3px #FEF08A, 0 0 15px rgba(245, 158, 11, 0.7) !important;
+            transform: scale(1.03);
+            z-index: 10;
+        }
+
+        /* خط برش تعاملی */
+        .cut-line-guide {
+            cursor: grab;
+            transition: all 0.2s;
+            touch-action: none;
+        }
+        .cut-line-guide:hover {
+            background-color: rgba(239, 68, 68, 0.15);
+        }
+
+        /* رد چاقو هنگام کشیدن انگشت یا موس */
+        .knife-swipe-trail {
+            position: absolute;
+            height: 6px;
+            background: linear-gradient(90deg, transparent, #ef4444, #fef08a, #ffffff);
+            border-radius: 9999px;
+            pointer-events: none;
+            z-index: 30;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.9);
+        }
+    </style>
+</head>
+<body class="text-slate-800 flex flex-col justify-between p-3 sm:p-6">
+
+    <!-- هدر و نوار وضعیت بالای صفحه -->
+    <header class="max-w-4xl w-full mx-auto bg-white/90 backdrop-blur-md rounded-3xl p-3 sm:p-4 shadow-lg border-2 border-amber-200 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-400 flex items-center justify-center text-2xl shadow-md text-white">
+                🍰
+            </div>
+            <div>
+                <h1 class="text-lg sm:text-xl font-black text-amber-900">قنادی کسرها</h1>
+                <p class="text-xs sm:text-sm text-amber-700 font-semibold">تقسیم کسر بر عدد کامل</p>
+            </div>
+        </div>
+
+        <!-- نمایش امتیاز، ستاره‌ها و دکمه‌های کمکی -->
+        <div class="flex items-center gap-2 sm:gap-3">
+            <div class="bg-amber-100 border-2 border-amber-300 px-3 py-1.5 rounded-2xl flex items-center gap-1.5 font-extrabold text-amber-900">
+                <span class="text-xl">⭐</span>
+                <span id="star-count">۰</span>
+            </div>
+
+            <button onclick="openTutorialModal()" class="btn-3d bg-sky-500 hover:bg-sky-600 text-white px-3 py-2 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-1">
+                <span>💡</span>
+                <span>آموزش سریع</span>
+            </button>
+
+            <button id="sound-toggle" onclick="toggleSound()" class="btn-3d bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-2xl text-lg" title="قطع/وصل صدا">
+                🔊
+            </button>
+        </div>
+    </header>
+
+    <!-- کانتینر اصلی محتوای بازی -->
+    <main class="max-w-4xl w-full mx-auto my-4 flex-grow flex flex-col justify-center">
+
+        <!-- صفحه شروع (انتخاب مرحله) -->
+        <section id="screen-menu" class="bg-white/95 rounded-3xl p-6 sm:p-8 shadow-xl border-4 border-orange-200 text-center pop-in">
+            <div class="inline-block bg-orange-100 text-orange-800 px-4 py-1.5 rounded-full text-sm font-bold mb-3">
+                ویژه دانش‌آموزان پایه پنجم دبستان 🎓
+            </div>
+            <h2 class="text-2xl sm:text-4xl font-black text-slate-800 mb-3">
+                بیایید با هم کیک و شکلات تقسیم کنیم!
+            </h2>
+            <p class="text-slate-600 max-w-xl mx-auto mb-8 text-sm sm:text-base leading-relaxed">
+                آیا می‌دانی وقتی <strong>نصف یک کیک</strong> را بین <strong>۳ نفر</strong> تقسیم می‌کنیم، به هر نفر چقدر می‌رسد؟ مراحل زیر را به ترتیب بازی کن تا استاد تقسیم کسرها شوی!
+            </p>
+
+            <!-- کارت‌های سه مرحله آموزشی -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 text-right">
+                <!-- مرحله ۱ -->
+                <div onclick="startStage(1)" class="cursor-pointer group bg-gradient-to-b from-amber-50 to-orange-100 border-3 border-amber-300 hover:border-amber-500 rounded-3xl p-5 transition-all hover:-translate-y-1 shadow-md">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="bg-amber-500 text-white text-xs font-black px-3 py-1 rounded-full">مرحله اول</span>
+                        <span class="text-3xl group-hover:scale-125 transition-transform">🔪</span>
+                    </div>
+                    <h3 class="text-lg font-black text-amber-950 mb-1">کشف مفهوم (برش زدن)</h3>
+                    <p class="text-xs text-amber-800 leading-relaxed mb-4">
+                        با چاقوی قنادی شکلات‌ها را برش بزن و ببین چطور قسمت‌های کوچک‌تر ساخته می‌شوند!
+                    </p>
+                    <div class="w-full py-2 bg-amber-500 text-white rounded-xl text-center font-bold text-sm btn-3d">
+                        شروع مرحله ۱
+                    </div>
+                </div>
+
+                <!-- مرحله ۲ -->
+                <div onclick="startStage(2)" class="cursor-pointer group bg-gradient-to-b from-emerald-50 to-teal-100 border-3 border-emerald-300 hover:border-emerald-500 rounded-3xl p-5 transition-all hover:-translate-y-1 shadow-md">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="bg-emerald-500 text-white text-xs font-black px-3 py-1 rounded-full">مرحله دوم</span>
+                        <span class="text-3xl group-hover:scale-125 transition-transform">🎨</span>
+                    </div>
+                    <h3 class="text-lg font-black text-emerald-950 mb-1">تمرین با کسر ساز</h3>
+                    <p class="text-xs text-emerald-800 leading-relaxed mb-4">
+                        صورت و مخرج پاسخ را تنظیم کن و هم‌زمان رنگ‌آمیزی سهم هر نفر را روی شکل ببین!
+                    </p>
+                    <div class="w-full py-2 bg-emerald-500 text-white rounded-xl text-center font-bold text-sm btn-3d">
+                        شروع مرحله ۲
+                    </div>
+                </div>
+
+                <!-- مرحله ۳ -->
+                <div onclick="startStage(3)" class="cursor-pointer group bg-gradient-to-b from-purple-50 to-pink-100 border-3 border-purple-300 hover:border-purple-500 rounded-3xl p-5 transition-all hover:-translate-y-1 shadow-md">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="bg-purple-500 text-white text-xs font-black px-3 py-1 rounded-full">مرحله سوم</span>
+                        <span class="text-3xl group-hover:scale-125 transition-transform">🏆</span>
+                    </div>
+                    <h3 class="text-lg font-black text-purple-950 mb-1">آزمون ستاره‌ای</h3>
+                    <p class="text-xs text-purple-800 leading-relaxed mb-4">
+                        آماده‌ای؟ مسائل متنوع را حل کن و ستاره بگیر! هر وقت نیاز بود از راهنمای تصویری کمک بگیر.
+                    </p>
+                    <div class="w-full py-2 bg-purple-500 text-white rounded-xl text-center font-bold text-sm btn-3d">
+                        شروع مرحله ۳
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- صفحه بازی مرحله ۱: کشف مفهوم با برش تعاملی -->
+        <section id="screen-stage-1" class="hidden bg-white/95 rounded-3xl p-5 sm:p-7 shadow-xl border-4 border-amber-300 pop-in">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b-2 border-amber-100">
+                <button onclick="goHome()" class="text-sm font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1">
+                    <span>🏠</span> منوی اصلی
+                </button>
+                <span class="bg-amber-100 text-amber-900 px-3 py-1 rounded-full text-xs sm:text-sm font-extrabold">
+                    مرحله ۱: برش تعاملی (سوال <span id="s1-q-num">۱</span> از ۳)
+                </span>
+            </div>
+
+            <!-- صورت مسئله داستانی -->
+            <div id="s1-story" class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 text-center mb-5"></div>
+
+            <!-- ناحیه تعاملی برش شکلات -->
+            <div class="flex flex-col items-center justify-center my-4">
+                <p id="s1-instruction" class="text-sm sm:text-base font-bold text-rose-600 mb-3 animate-pulse">
+                    ✂️ انگشت یا موس را از یک طرف خط‌چین قرمز به طرف دیگر بکش تا برش بخورد!
+                </p>
+
+                <!-- قاب شکلات تعاملی -->
+                <div id="s1-board-container" class="relative w-full max-w-md aspect-[16/10] bg-amber-100/60 p-3 rounded-2xl border-4 border-amber-800/30 shadow-inner flex flex-col select-none"></div>
+
+                <!-- توضیحات مفهومی پس از برش -->
+                <div id="s1-concept-box" class="hidden mt-5 w-full max-w-xl bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-4 text-center pop-in">
+                    <p id="s1-concept-text" class="text-sm sm:text-base text-emerald-950 font-semibold leading-relaxed mb-4"></p>
+                    
+                    <!-- انتخاب پاسخ نهایی پس از مشاهده برش -->
+                    <div class="flex flex-wrap items-center justify-center gap-3">
+                        <span class="font-bold text-slate-700">پس سهم هر نفر چقدر است؟</span>
+                        <div id="s1-options" class="flex gap-3"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- صفحه بازی مرحله ۲: تمرین با کسر ساز تصویری -->
+        <section id="screen-stage-2" class="hidden bg-white/95 rounded-3xl p-5 sm:p-7 shadow-xl border-4 border-emerald-300 pop-in">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b-2 border-emerald-100">
+                <button onclick="goHome()" class="text-sm font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1">
+                    <span>🏠</span> منوی اصلی
+                </button>
+                <span class="bg-emerald-100 text-emerald-900 px-3 py-1 rounded-full text-xs sm:text-sm font-extrabold">
+                    مرحله ۲: کسر ساز تصویری (سوال <span id="s2-q-num">۱</span> از ۴)
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <!-- سمت راست: نمایش شکل تقسیم‌شده -->
+                <div class="flex flex-col items-center bg-slate-50 p-4 rounded-3xl border-2 border-slate-200">
+                    <div id="s2-equation-display" class="text-2xl sm:text-3xl font-black text-slate-800 mb-3 flex items-center gap-2" dir="ltr"></div>
+                    <p id="s2-visual-caption" class="text-xs text-slate-500 mb-3 text-center">
+                        شکل زیر کل کسر و تقسیم آن را نشان می‌دهد:
+                    </p>
+                    <div id="s2-grid" class="w-full max-w-xs aspect-square bg-white p-2 rounded-2xl border-2 border-slate-300 shadow-sm grid gap-1"></div>
+                    <div class="flex items-center gap-4 mt-3 text-xs font-bold">
+                        <span class="flex items-center gap-1"><i class="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></i> پاسخ انتخابی تو</span>
+                        <span class="flex items-center gap-1"><i class="w-3 h-3 rounded-sm bg-slate-200 inline-block"></i> بقیه قطعات واحد</span>
+                    </div>
+                </div>
+
+                <!-- سمت چپ: کنترلرهای ساخت کسر پاسخ -->
+                <div class="flex flex-col items-center justify-center bg-emerald-50/70 p-5 rounded-3xl border-2 border-emerald-200">
+                    <h3 class="font-black text-emerald-950 text-base sm:text-lg mb-2 text-center">
+                        پاسخ را با دکمه‌های + و - بساز:
+                    </h3>
+                    <p class="text-xs text-emerald-800 text-center mb-4">
+                        دقت کن! وقتی کل واحد به قسمت‌های کوچک‌تر تقسیم می‌شود، مخرج جدید چند می‌شود؟
+                    </p>
+
+                    <!-- ویجت تنظیم صورت و مخرج -->
+                    <div class="flex items-center gap-4 bg-white px-6 py-4 rounded-3xl shadow-md border-2 border-emerald-300 mb-5">
+                        <div class="flex flex-col items-center gap-2">
+                            <!-- کنترل صورت -->
+                            <div class="flex items-center gap-3">
+                                <button onclick="adjustS2Fraction('num', -1)" class="btn-3d w-9 h-9 rounded-xl bg-rose-100 text-rose-700 font-black text-xl">-</button>
+                                <span id="s2-user-num" class="w-10 text-center text-2xl font-black text-slate-800">۱</span>
+                                <button onclick="adjustS2Fraction('num', 1)" class="btn-3d w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 font-black text-xl">+</button>
+                            </div>
+                            <span class="text-[11px] font-bold text-slate-400">صورت (تعداد قطعات سهم یک نفر)</span>
+
+                            <!-- خط کسری -->
+                            <div class="w-32 h-1 bg-slate-800 rounded-full my-1"></div>
+
+                            <!-- کنترل مخرج -->
+                            <div class="flex items-center gap-3">
+                                <button onclick="adjustS2Fraction('den', -1)" class="btn-3d w-9 h-9 rounded-xl bg-rose-100 text-rose-700 font-black text-xl">-</button>
+                                <span id="s2-user-den" class="w-10 text-center text-2xl font-black text-slate-800">۲</span>
+                                <button onclick="adjustS2Fraction('den', 1)" class="btn-3d w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 font-black text-xl">+</button>
+                            </div>
+                            <span class="text-[11px] font-bold text-slate-400">مخرج (کل قطعات مساوی واحد)</span>
+                        </div>
+                    </div>
+
+                    <button onclick="checkStage2Answer()" class="btn-3d w-full max-w-xs py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-2xl text-base">
+                        بررسی پاسخ ✔️
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- صفحه بازی مرحله ۳: آزمون ستاره‌ای و چالش ذهنی -->
+        <section id="screen-stage-3" class="hidden bg-white/95 rounded-3xl p-5 sm:p-7 shadow-xl border-4 border-purple-300 pop-in">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b-2 border-purple-100">
+                <button onclick="goHome()" class="text-sm font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1">
+                    <span>🏠</span> منوی اصلی
+                </button>
+                <div class="flex items-center gap-2">
+                    <span class="bg-purple-100 text-purple-900 px-3 py-1 rounded-full text-xs sm:text-sm font-extrabold">
+                        مرحله ۳: آزمون ستاره‌ای (سوال <span id="s3-q-num">۱</span> از ۵)
+                    </span>
+                </div>
+            </div>
+
+            <div class="max-w-xl mx-auto text-center">
+                <!-- نمایش سوال -->
+                <div class="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-3xl p-6 mb-5 shadow-sm">
+                    <p id="s3-prompt" class="text-sm text-purple-800 font-bold mb-3">حاصل تقسیم زیر را به دست آورید:</p>
+                    <div id="s3-equation" class="text-3xl sm:text-4xl font-black text-slate-800 flex items-center justify-center gap-3" dir="ltr"></div>
+                </div>
+
+                <!-- دکمه راهنمای تصویری برای حفظ رویکرد مفهومی -->
+                <div class="mb-5">
+                    <button id="s3-hint-btn" onclick="toggleS3VisualHint()" class="btn-3d bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold inline-flex items-center gap-2">
+                        <span>👁️</span>
+                        <span>نمایش راهنمای تصویری</span>
+                    </button>
+
+                    <!-- باکس راهنمای تصویری مخفی -->
+                    <div id="s3-hint-box" class="hidden mt-4 bg-amber-50/80 border-2 border-amber-200 rounded-2xl p-4 pop-in">
+                        <p id="s3-hint-text" class="text-xs sm:text-sm text-amber-900 font-semibold mb-3"></p>
+                        <div id="s3-hint-grid" class="w-44 h-44 mx-auto bg-white p-1.5 rounded-xl border border-amber-300 grid gap-1"></div>
+                    </div>
+                </div>
+
+                <!-- گزینه‌های چندگزینه‌ای -->
+                <div id="s3-options" class="grid grid-cols-2 gap-3 sm:gap-4"></div>
+            </div>
+        </section>
+
+        <!-- صفحه پایان مرحله / جشن پیروزی -->
+        <section id="screen-victory" class="hidden bg-white/95 rounded-3xl p-6 sm:p-10 shadow-xl border-4 border-amber-400 text-center pop-in">
+            <div class="text-6xl mb-4 animate-float">🏆🎉</div>
+            <h2 id="victory-title" class="text-2xl sm:text-3xl font-black text-amber-900 mb-2">آفرین قهرمان ریاضی!</h2>
+            <p id="victory-desc" class="text-slate-600 max-w-md mx-auto mb-6 text-sm sm:text-base leading-relaxed"></p>
+            
+            <div class="inline-flex items-center gap-2 bg-amber-100 border-2 border-amber-300 px-6 py-3 rounded-2xl text-xl font-black text-amber-900 mb-6">
+                <span>مجموع ستاره‌های تو:</span>
+                <span id="victory-stars">۰</span>
+                <span>⭐</span>
+            </div>
+
+            <div class="flex flex-wrap justify-center gap-3">
+                <button id="next-stage-btn" onclick="goNextStage()" class="btn-3d bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black text-base">
+                    مرحله بعدی ⬅️
+                </button>
+                <button onclick="goHome()" class="btn-3d bg-slate-200 hover:bg-slate-300 text-slate-800 px-6 py-3 rounded-2xl font-bold text-base">
+                    بازگشت به منو
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- فوتر آموزشی -->
+    <footer class="max-w-4xl w-full mx-auto text-center text-xs text-slate-600 py-2">
+        💡 <strong>نکته طلایی:</strong> وقتی کسری را بر یک عدد کامل تقسیم می‌کنیم، هر قطعه کوچک‌تر می‌شود؛ پس <strong>مخرج کسر در آن عدد کامل ضرب می‌شود</strong>!
+    </footer>
+
+    <!-- پنجره بازخورد (پیام تشویقی یا راهنمایی به جای alert) - بهینه‌شده برای موبایل -->
+    <div id="feedback-toast-wrapper" class="fixed bottom-4 inset-x-0 z-50 px-3 flex justify-center pointer-events-none hidden">
+        <div id="feedback-toast" class="pointer-events-auto max-w-md w-full rounded-2xl p-3.5 sm:p-4 shadow-2xl border-2 text-center font-bold text-xs sm:text-base leading-relaxed break-words">
+        </div>
+    </div>
+
+    <!-- مودال آموزش سریع -->
+    <div id="tutorial-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 border-4 border-sky-300 shadow-2xl pop-in relative">
+            <button onclick="closeTutorialModal()" class="absolute top-4 left-4 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 font-black text-slate-600">✕</button>
+            <div class="flex items-center gap-2 text-sky-700 font-black text-xl mb-3">
+                <span>🎓</span>
+                <h3>چطور کسر را بر عدد کامل تقسیم کنیم؟</h3>
+            </div>
+            
+            <div class="space-y-3 text-sm text-slate-700 leading-relaxed">
+                <p>فرض کنید <strong>۱/۲ (نصف)</strong> یک کیک داریم و می‌خواهیم آن را بین <strong>۳ نفر</strong> تقسیم کنیم:</p>
+                
+                <div class="bg-sky-50 p-3 rounded-2xl border border-sky-200 flex items-center justify-around">
+                    <div class="text-center">
+                        <div class="w-16 h-16 mx-auto border-2 border-slate-400 grid grid-cols-2 rounded-lg overflow-hidden mb-1">
+                            <div class="bg-amber-400"></div>
+                            <div class="bg-slate-100"></div>
+                        </div>
+                        <span class="text-xs font-bold">۱/۲ کیک اولیه</span>
+                    </div>
+                    <span class="text-xl font-black text-sky-600">⬅️ برش به ۳ ردیف</span>
+                    <div class="text-center">
+                        <div class="w-16 h-16 mx-auto border-2 border-slate-400 grid grid-cols-2 grid-rows-3 rounded-lg overflow-hidden mb-1">
+                            <div class="bg-emerald-500 border border-white"></div>
+                            <div class="bg-slate-100 border border-white"></div>
+                            <div class="bg-amber-300 border border-white"></div>
+                            <div class="bg-slate-100 border border-white"></div>
+                            <div class="bg-amber-300 border border-white"></div>
+                            <div class="bg-slate-100 border border-white"></div>
+                        </div>
+                        <span class="text-xs font-bold text-emerald-700">سهم هر نفر: ۱/۶</span>
+                    </div>
+                </div>
+
+                <p class="bg-amber-50 p-3 rounded-xl border border-amber-200 font-semibold text-amber-950">
+                    🔹 کل کیک به <strong>۲ × ۳ = ۶</strong> قسمت مساوی تبدیل شد!<br>
+                    🔹 پس صورت کسر ثابت می‌ماند و <strong>مخرج در عدد کامل ضرب می‌شود</strong>.
+                </p>
+            </div>
+
+            <button onclick="closeTutorialModal()" class="btn-3d w-full mt-5 py-3 bg-sky-500 hover:bg-sky-600 text-white font-black rounded-2xl">
+                متوجه شدم! بریم بازی 🚀
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================================================
+           مدیریت صدا با Tone.js (تولید افکت‌های شاد بدون نیاز به فایل خارجی)
+           ========================================================================== */
+        let soundEnabled = true;
+        let synth = null;
+
+        function initAudio() {
+            if (!synth && typeof Tone !== 'undefined') {
+                synth = new Tone.PolySynth(Tone.Synth).toDestination();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                if (!synth) return;
+                if (Tone.context.state !== 'running') {
+                    Tone.start();
+                }
+                const now = Tone.now();
+                if (type === 'slice') {
+                    synth.triggerAttackRelease("C5", "32n", now);
+                    synth.triggerAttackRelease("G5", "32n", now + 0.05);
+                } else if (type === 'click') {
+                    synth.triggerAttackRelease("E4", "32n", now);
+                } else if (type === 'success') {
+                    synth.triggerAttackRelease("C5", "16n", now);
+                    synth.triggerAttackRelease("E5", "16n", now + 0.1);
+                    synth.triggerAttackRelease("G5", "16n", now + 0.2);
+                    synth.triggerAttackRelease("C6", "8n", now + 0.3);
+                } else if (type === 'error') {
+                    synth.triggerAttackRelease("A3", "8n", now);
+                    synth.triggerAttackRelease("F3", "8n", now + 0.12);
+                }
+            } catch (e) {
+                console.warn("Audio playback skipped:", e);
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('sound-toggle').innerText = soundEnabled ? '🔊' : '🔇';
+        }
+
+        /* ==========================================================================
+           ابزارهای کمکی ریاضی و تبدیل اعداد به فارسی
+           ========================================================================== */
+        function toPersianDigits(num) {
+            const persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+            return num.toString().replace(/\d/g, x => persian[x]);
+        }
+
+        function renderFractionHTML(num, den, sizeClass = "text-lg") {
+            return `
+                <span class="fraction ${sizeClass}" dir="ltr">
+                    <span class="fraction-top">${toPersianDigits(num)}</span>
+                    <span class="fraction-bottom">${toPersianDigits(den)}</span>
+                </span>
+            `;
+        }
+
+        function gcd(a, b) {
+            return b === 0 ? a : gcd(b, a % b);
+        }
+
+        function randomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        /* ==========================================================================
+           وضعیت کلی بازی (State Management) و تولیدکننده سوالات تصادفی
+           ========================================================================== */
+        const gameState = {
+            stars: 0,
+            currentStage: 0,
+            s1Index: 0,
+            s1CutsMade: 0,
+            s1CurrentQ: null,
+            s2Index: 0,
+            s2CurrentQ: null,
+            s2UserNum: 1,
+            s2UserDen: 2,
+            s3Index: 0,
+            s3CurrentQ: null,
+            usedSignatures: new Set()
+        };
+
+        // تولید کسر تصادفی مناسب (صورت کوچک‌تر از مخرج) و عدد مقسوم‌علیه
+        function generateUniqueFractionQuestion(maxDen = 6, maxDivisor = 4, preferSimplifiable = false) {
+            let attempts = 0;
+            while (attempts < 50) {
+                attempts++;
+                const den = randomInt(2, maxDen);
+                const num = randomInt(1, den - 1);
+                const divisor = randomInt(2, maxDivisor);
+
+                if (preferSimplifiable && gcd(num, den * divisor) === 1 && attempts < 35) {
+                    continue;
+                }
+
+                const sig = `${num}/${den}÷${divisor}`;
+                if (!gameState.usedSignatures.has(sig)) {
+                    gameState.usedSignatures.add(sig);
+                    return { num, den, divisor };
+                }
+            }
+            const den = randomInt(2, maxDen);
+            return { num: 1, den, divisor: randomInt(2, maxDivisor) };
+        }
+
+        function addStars(count) {
+            gameState.stars += count;
+            document.getElementById('star-count').innerText = toPersianDigits(gameState.stars);
+        }
+
+        function showToast(message, isSuccess = true) {
+            const wrapper = document.getElementById('feedback-toast-wrapper');
+            const toast = document.getElementById('feedback-toast');
+            toast.innerHTML = message;
+            toast.className = `pointer-events-auto max-w-md w-full rounded-2xl p-3.5 sm:p-4 shadow-2xl border-2 text-center font-bold text-xs sm:text-base leading-relaxed break-words pop-in ${
+                isSuccess 
+                ? 'bg-emerald-600 text-white border-emerald-300' 
+                : 'bg-rose-600 text-white border-rose-300'
+            }`;
+            wrapper.classList.remove('hidden');
+            clearTimeout(wrapper.hideTimer);
+            wrapper.hideTimer = setTimeout(() => {
+                wrapper.classList.add('hidden');
+            }, 3400);
+        }
+
+        function switchScreen(screenId) {
+            ['screen-menu', 'screen-stage-1', 'screen-stage-2', 'screen-stage-3', 'screen-victory'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        function goHome() {
+            playSound('click');
+            switchScreen('screen-menu');
+        }
+
+        function openTutorialModal() {
+            playSound('click');
+            const modal = document.getElementById('tutorial-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeTutorialModal() {
+            playSound('click');
+            const modal = document.getElementById('tutorial-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function startStage(stageNum) {
+            playSound('click');
+            gameState.currentStage = stageNum;
+            gameState.usedSignatures.clear();
+            if (stageNum === 1) {
+                gameState.s1Index = 0;
+                loadStage1Question();
+                switchScreen('screen-stage-1');
+            } else if (stageNum === 2) {
+                gameState.s2Index = 0;
+                loadStage2Question();
+                switchScreen('screen-stage-2');
+            } else if (stageNum === 3) {
+                gameState.s3Index = 0;
+                loadStage3Question();
+                switchScreen('screen-stage-3');
+            }
+        }
+
+        /* ==========================================================================
+           مرحله ۱: کشف مفهوم با برش تعاملی شکلات (سوالات تصادفی داستانی)
+           ========================================================================== */
+        const stage1Templates = [
+            { item: "شکلات تخته‌ای", recipient: "دوست" },
+            { item: "کیک مستطیلی", recipient: "نفر" },
+            { item: "شکلات مغزدار", recipient: "خواهر" },
+            { item: "پیتزای خانواده", recipient: "مهمان" },
+            { item: "کیک یزدی بزرگ", recipient: "دانش‌آموز" }
+        ];
+
+        function buildRandomStage1Question() {
+            const base = generateUniqueFractionQuestion(5, 4, false);
+            const tpl = stage1Templates[randomInt(0, stage1Templates.length - 1)];
+            const totalPieces = base.den * base.divisor;
+            const cutsNeeded = base.divisor - 1;
+
+            return {
+                ...base,
+                item: tpl.item,
+                story: `می‌خواهیم ${renderFractionHTML(base.num, base.den)} از یک ${tpl.item} را بین <strong>${toPersianDigits(base.divisor)} ${tpl.recipient}</strong> به طور مساوی تقسیم کنیم. سهم هر نفر چقدر می‌شود؟`,
+                concept: `ببین! وقتی کل ${tpl.item} را با ${toPersianDigits(cutsNeeded)} برش افقی به <strong>${toPersianDigits(base.divisor)} ردیف</strong> تقسیم کردیم، کل واحد به <strong>${toPersianDigits(base.den)} × ${toPersianDigits(base.divisor)} = ${toPersianDigits(totalPieces)}</strong> قطعه مساوی تبدیل شد. سهم هر نفر (ردیف طلایی) برابر با <strong>${toPersianDigits(base.num)} قطعه از ${toPersianDigits(totalPieces)} قطعه</strong> است!`
+            };
+        }
+
+        function loadStage1Question() {
+            gameState.s1CurrentQ = buildRandomStage1Question();
+            const q = gameState.s1CurrentQ;
+            gameState.s1CutsMade = 0;
+            const totalCutsNeeded = q.divisor - 1;
+
+            document.getElementById('s1-q-num').innerText = toPersianDigits(gameState.s1Index + 1);
+            document.getElementById('s1-story').innerHTML = `<p class="text-base sm:text-lg font-bold text-amber-950 leading-relaxed">${q.story}</p>`;
+            document.getElementById('s1-instruction').innerText = `🔪 انگشت یا موس را روی خط‌چین بکش تا ${q.item} کم‌کم برش بخورد (${toPersianDigits(totalCutsNeeded)} برش لازم است)`;
+            document.getElementById('s1-instruction').classList.remove('hidden');
+            document.getElementById('s1-concept-box').classList.add('hidden');
+
+            renderStage1Board();
+        }
+
+        // متغیرهای وضعیت برش کشیدنی (Swipe / Drag)
+        let activeCutState = {
+            isCutting: false,
+            lineIndex: -1,
+            minX: 1,
+            maxX: 0
+        };
+
+        function renderStage1Board() {
+            const q = gameState.s1CurrentQ;
+            const container = document.getElementById('s1-board-container');
+            const totalRows = q.divisor;
+            const cutsMade = gameState.s1CutsMade;
+            const isFullyCut = cutsMade === totalRows - 1;
+
+            // ساخت ردیف‌های واقعی بر اساس تقسیم‌بندی نهایی (مثلاً برای تقسیم بر ۳: ابتدا ۱/۳ و ۲/۳، سپس سه تکه ۱/۳)
+            const rowSpans = [];
+            for (let i = 0; i < cutsMade; i++) {
+                rowSpans.push(1);
+            }
+            rowSpans.push(totalRows - cutsMade);
+
+            let html = `<div class="w-full h-full grid gap-1.5 relative" style="grid-template-columns: repeat(${q.den}, 1fr); grid-template-rows: repeat(${totalRows}, 1fr);">`;
+
+            for (let rIdx = 0; rIdx < rowSpans.length; rIdx++) {
+                const span = rowSpans[rIdx];
+                for (let c = 0; c < q.den; c++) {
+                    const isFilled = c < q.num;
+                    const isFirstShare = isFullyCut && rIdx === 0 && isFilled;
+                    let pieceClass = isFilled ? 'choco-piece' : 'empty-piece';
+                    if (isFirstShare) pieceClass += ' share-highlight';
+
+                    html += `
+                        <div style="grid-row: span ${span};" class="${pieceClass} rounded-xl border-2 border-amber-900/20 flex items-center justify-center transition-all duration-300">
+                            ${isFirstShare ? '<span class="text-white font-black text-xs sm:text-sm drop-shadow">سهم ۱ نفر</span>' : ''}
+                        </div>
+                    `;
+                }
+            }
+            html += `</div>`;
+
+            // قرار دادن خط‌چین‌های برش دقیقاً در جای هندسی خود (مثلاً ۱/۳ و ۲/۳ از ارتفاع)
+            if (!isFullyCut) {
+                html += `<div class="absolute inset-3 pointer-events-none">`;
+                for (let cutNum = cutsMade + 1; cutNum < totalRows; cutNum++) {
+                    const idx = cutNum - (cutsMade + 1);
+                    const topPercent = (cutNum / totalRows) * 100;
+                    html += `
+                        <div data-cut-idx="${idx}"
+                             style="top: ${topPercent}%; transform: translateY(-50%);"
+                             onpointerdown="startManualCut(event, ${idx})"
+                             onpointermove="moveManualCut(event, ${idx})"
+                             onpointerup="endManualCut(event, ${idx})"
+                             onpointercancel="endManualCut(event, ${idx})"
+                             class="cut-line-guide pointer-events-auto absolute left-0 right-0 h-11 flex items-center justify-center group">
+                            <div class="w-full border-t-4 border-dashed border-rose-500/85 relative flex items-center justify-center">
+                                <!-- نوار پیشرفت برش واقعی هنگام کشیدن دست -->
+                                <div id="cut-progress-${idx}" class="absolute top-[-4px] left-0 h-1.5 bg-emerald-400 shadow-[0_0_10px_#10b981] rounded-full transition-none" style="width: 0%;"></div>
+                                <!-- آیکون چاقوی متحرک همراه با دست -->
+                                <span id="cut-knife-${idx}" class="bg-rose-600 text-white text-xs font-black px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1 transition-transform">
+                                    <span>🔪</span>
+                                    <span class="cut-label">برش ${toPersianDigits(cutNum)} ⬅️</span>
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                }
+                html += `</div>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function startManualCut(e, idx) {
+            e.preventDefault();
+            const target = e.currentTarget;
+            if (target.setPointerCapture) {
+                target.setPointerCapture(e.pointerId);
+            }
+            const rect = target.getBoundingClientRect();
+            const relX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+
+            activeCutState = {
+                isCutting: true,
+                lineIndex: idx,
+                minX: relX,
+                maxX: relX
+            };
+            updateCutVisuals(idx, rect, relX);
+            playSound('click');
+        }
+
+        function moveManualCut(e, idx) {
+            if (!activeCutState.isCutting || activeCutState.lineIndex !== idx) return;
+            e.preventDefault();
+            const target = e.currentTarget;
+            const rect = target.getBoundingClientRect();
+            const relX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+
+            activeCutState.minX = Math.min(activeCutState.minX, relX);
+            activeCutState.maxX = Math.max(activeCutState.maxX, relX);
+
+            const progress = activeCutState.maxX - activeCutState.minX;
+            updateCutVisuals(idx, rect, relX, progress);
+
+            // وقتی دانش‌آموز حداقل ۶۵ درصد عرض کیک را با دست برید، برش کامل می‌شود
+            if (progress >= 0.65) {
+                activeCutState.isCutting = false;
+                makeSlice();
+            }
+        }
+
+        function endManualCut(e, idx) {
+            if (!activeCutState.isCutting || activeCutState.lineIndex !== idx) return;
+            const progress = activeCutState.maxX - activeCutState.minX;
+            activeCutState.isCutting = false;
+
+            if (progress < 0.65) {
+                // اگر برش نیمه‌کاره رها شد، نوار به حالت اولیه برگردد
+                const bar = document.getElementById(`cut-progress-${idx}`);
+                const knife = document.getElementById(`cut-knife-${idx}`);
+                if (bar) {
+                    bar.style.width = '0%';
+                }
+                if (knife) {
+                    knife.style.position = 'static';
+                    knife.style.transform = 'none';
+                    const lbl = knife.querySelector('.cut-label');
+                    if (lbl) lbl.innerText = 'تا انتها بکش! 🔪';
+                }
+            }
+        }
+
+        function updateCutVisuals(idx, rect, relX, progress = 0) {
+            const bar = document.getElementById(`cut-progress-${idx}`);
+            const knife = document.getElementById(`cut-knife-${idx}`);
+            if (bar) {
+                bar.style.left = `${activeCutState.minX * 100}%`;
+                bar.style.width = `${Math.max(4, progress * 100)}%`;
+            }
+            if (knife) {
+                knife.style.position = 'absolute';
+                knife.style.left = `calc(${relX * 100}% - 24px)`;
+                knife.style.transform = 'scale(1.15) rotate(-15deg)';
+                const lbl = knife.querySelector('.cut-label');
+                if (lbl) lbl.innerText = `${toPersianDigits(Math.min(100, Math.round((progress / 0.65) * 100)))}%`;
+            }
+        }
+
+        function makeSlice() {
+            const q = gameState.s1CurrentQ;
+            if (gameState.s1CutsMade < q.divisor - 1) {
+                gameState.s1CutsMade++;
+                playSound('slice');
+                const container = document.getElementById('s1-board-container');
+                container.classList.add('slice-flash');
+                setTimeout(() => container.classList.remove('slice-flash'), 400);
+
+                renderStage1Board();
+
+                if (gameState.s1CutsMade === q.divisor - 1) {
+                    document.getElementById('s1-instruction').classList.add('hidden');
+                    const conceptBox = document.getElementById('s1-concept-box');
+                    document.getElementById('s1-concept-text').innerHTML = q.concept;
+
+                    const correctNum = q.num;
+                    const correctDen = q.den * q.divisor;
+                    const options = [
+                        { num: correctNum, den: correctDen, correct: true },
+                        { num: q.num * q.divisor, den: q.den, correct: false },
+                        { num: correctNum, den: q.den + q.divisor, correct: false }
+                    ].sort(() => Math.random() - 0.5);
+
+                    const optContainer = document.getElementById('s1-options');
+                    optContainer.innerHTML = options.map(opt => `
+                        <button onclick="answerStage1(${opt.correct})" class="btn-3d bg-white hover:bg-amber-100 border-2 border-amber-400 px-4 py-2 rounded-2xl text-amber-950 font-black">
+                            ${renderFractionHTML(opt.num, opt.den, "text-lg")}
+                        </button>
+                    `).join('');
+
+                    conceptBox.classList.remove('hidden');
+                }
+            }
+        }
+
+        function answerStage1(isCorrect) {
+            if (isCorrect) {
+                playSound('success');
+                addStars(2);
+                showToast("آفرین! کاملاً درست فهمیدی. مخرج در عدد کامل ضرب شد! ⭐⭐", true);
+                setTimeout(() => {
+                    gameState.s1Index++;
+                    if (gameState.s1Index < 3) {
+                        loadStage1Question();
+                    } else {
+                        showVictoryScreen(1);
+                    }
+                }, 1400);
+            } else {
+                playSound('error');
+                showToast("دوباره به خانه‌های طلایی و کل خانه‌های شکلات نگاه کن! 🤔", false);
+            }
+        }
+
+        /* ==========================================================================
+           مرحله ۲: تمرین با کسر ساز تصویری (تولید تصادفی با سقف مخرج ۲۰)
+           ========================================================================== */
+        function buildRandomStage2Question() {
+            while (true) {
+                const q = generateUniqueFractionQuestion(5, 4, false);
+                if (q.den * q.divisor <= 20) return q;
+            }
+        }
+
+        function loadStage2Question() {
+            gameState.s2CurrentQ = buildRandomStage2Question();
+            const q = gameState.s2CurrentQ;
+            gameState.s2UserNum = 1;
+            gameState.s2UserDen = q.den;
+
+            document.getElementById('s2-q-num').innerText = toPersianDigits(gameState.s2Index + 1);
+            document.getElementById('s2-equation-display').innerHTML = `
+                ${renderFractionHTML(q.num, q.den, "text-2xl")}
+                <span>÷</span>
+                <span>${toPersianDigits(q.divisor)}</span>
+                <span>=</span>
+                <span class="text-emerald-600">؟</span>
+            `;
+
+            updateStage2UI();
+        }
+
+        function adjustS2Fraction(part, delta) {
+            playSound('click');
+            if (part === 'num') {
+                gameState.s2UserNum = Math.max(1, Math.min(12, gameState.s2UserNum + delta));
+            } else {
+                gameState.s2UserDen = Math.max(2, Math.min(20, gameState.s2UserDen + delta));
+            }
+            updateStage2UI();
+        }
+
+        function updateStage2UI() {
+            const q = gameState.s2CurrentQ;
+            document.getElementById('s2-user-num').innerText = toPersianDigits(gameState.s2UserNum);
+            document.getElementById('s2-user-den').innerText = toPersianDigits(gameState.s2UserDen);
+
+            const grid = document.getElementById('s2-grid');
+            const totalCells = gameState.s2UserDen;
+            const cols = q.den;
+
+            grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            let cellsHTML = '';
+            for (let i = 0; i < totalCells; i++) {
+                const isSelected = i < gameState.s2UserNum;
+                cellsHTML += `
+                    <div class="rounded-lg border transition-all duration-200 flex items-center justify-center text-[10px] font-bold ${
+                        isSelected 
+                        ? 'bg-emerald-500 border-emerald-600 text-white shadow-sm' 
+                        : 'bg-slate-100 border-slate-200 text-slate-400'
+                    }">
+                        ${toPersianDigits(i + 1)}
+                    </div>
+                `;
+            }
+            grid.innerHTML = cellsHTML;
+        }
+
+        function checkStage2Answer() {
+            const q = gameState.s2CurrentQ;
+            const targetNum = q.num;
+            const targetDen = q.den * q.divisor;
+
+            const isExact = (gameState.s2UserNum === targetNum && gameState.s2UserDen === targetDen);
+            const isEquivalent = (gameState.s2UserNum * targetDen === targetNum * gameState.s2UserDen);
+
+            if (isExact || isEquivalent) {
+                playSound('success');
+                addStars(3);
+                const msg = isExact 
+                    ? `فوق‌العاده است! ${toPersianDigits(targetNum)}/${toPersianDigits(targetDen)} کاملاً درست است! ⭐⭐⭐`
+                    : `عالی! حتی کسر را ساده هم کردی! پاسخ کاملاً درست است! ⭐⭐⭐`;
+                showToast(msg, true);
+
+                setTimeout(() => {
+                    gameState.s2Index++;
+                    if (gameState.s2Index < 4) {
+                        loadStage2Question();
+                    } else {
+                        showVictoryScreen(2);
+                    }
+                }, 1400);
+            } else {
+                playSound('error');
+                if (gameState.s2UserDen !== targetDen) {
+                    showToast(`به مخرج دقت کن! ${toPersianDigits(q.den)} قسمت داشتیم و هر کدام به ${toPersianDigits(q.divisor)} بخش تقسیم شدند (${toPersianDigits(q.den)} × ${toPersianDigits(q.divisor)}).`, false);
+                } else {
+                    showToast(`مخرج درست است، اما صورت باید برابر با تعداد قطعات سهم یک نفر (${toPersianDigits(targetNum)}) باشد!`, false);
+                }
+            }
+        }
+
+        /* ==========================================================================
+           مرحله ۳: آزمون ستاره‌ای و چالش ذهنی (سوالات متنوع و تصادفی)
+           ========================================================================== */
+        function loadStage3Question() {
+            const preferSimplify = (gameState.s3Index === 2 || gameState.s3Index === 4);
+            gameState.s3CurrentQ = generateUniqueFractionQuestion(8, 5, preferSimplify);
+            const q = gameState.s3CurrentQ;
+
+            document.getElementById('s3-q-num').innerText = toPersianDigits(gameState.s3Index + 1);
+            document.getElementById('s3-hint-box').classList.add('hidden');
+
+            document.getElementById('s3-equation').innerHTML = `
+                ${renderFractionHTML(q.num, q.den, "text-3xl")}
+                <span>÷</span>
+                <span>${toPersianDigits(q.divisor)}</span>
+                <span>=</span>
+                <span class="text-purple-600">؟</span>
+            `;
+
+            const newDen = q.den * q.divisor;
+            document.getElementById('s3-hint-text').innerHTML = 
+                `واحد اولیه ${toPersianDigits(q.den)} قسمت داشت. با تقسیم بر ${toPersianDigits(q.divisor)}، کل واحد به <strong>${toPersianDigits(newDen)}</strong> قسمت تبدیل می‌شود و سهم هر نفر <strong>${toPersianDigits(q.num)}</strong> قسمت از آن است.`;
+            
+            const hintGrid = document.getElementById('s3-hint-grid');
+            hintGrid.style.gridTemplateColumns = `repeat(${q.den}, 1fr)`;
+            hintGrid.style.gridTemplateRows = `repeat(${q.divisor}, 1fr)`;
+            let hintCells = '';
+            for (let r = 0; r < q.divisor; r++) {
+                for (let c = 0; c < q.den; c++) {
+                    const isInitial = c < q.num;
+                    const isShare = r === 0 && isInitial;
+                    hintCells += `<div class="rounded-sm ${isShare ? 'bg-emerald-500' : isInitial ? 'bg-amber-300' : 'bg-slate-100'}"></div>`;
+                }
+            }
+            hintGrid.innerHTML = hintCells;
+
+            const rawNum = q.num;
+            const rawDen = q.den * q.divisor;
+            const common = gcd(rawNum, rawDen);
+            const simpNum = rawNum / common;
+            const simpDen = rawDen / common;
+
+            let options = [
+                { num: rawNum, den: rawDen, isCorrect: true, bonus: false },
+                { num: q.num * q.divisor, den: q.den, isCorrect: false, bonus: false },
+                { num: q.num, den: q.den + q.divisor, isCorrect: false, bonus: false }
+            ];
+
+            if (common > 1) {
+                options.push({ num: simpNum, den: simpDen, isCorrect: true, bonus: true });
+            } else {
+                options.push({ num: q.num + 1, den: rawDen, isCorrect: false, bonus: false });
+            }
+
+            options = options.sort(() => Math.random() - 0.5);
+
+            const optContainer = document.getElementById('s3-options');
+            optContainer.innerHTML = options.map(opt => `
+                <button onclick="answerStage3(${opt.isCorrect}, ${opt.bonus})" class="btn-3d bg-white hover:bg-purple-50 border-3 border-purple-300 hover:border-purple-500 py-3 px-4 rounded-2xl flex flex-col items-center justify-center relative">
+                    ${renderFractionHTML(opt.num, opt.den, "text-xl text-slate-800")}
+                </button>
+            `).join('');
+        }
+
+        function toggleS3VisualHint() {
+            playSound('click');
+            const box = document.getElementById('s3-hint-box');
+            box.classList.toggle('hidden');
+        }
+
+        function answerStage3(isCorrect, isBonus) {
+            if (isCorrect) {
+                playSound('success');
+                const earned = isBonus ? 5 : 3;
+                addStars(earned);
+                const msg = isBonus 
+                    ? `محشره! هم درست حل کردی و هم کسر را ساده کردی! (+${toPersianDigits(earned)} ستاره) 🌟`
+                    : `آفرین! پاسخ کاملاً درست است! (+${toPersianDigits(earned)} ستاره) ⭐`;
+                showToast(msg, true);
+
+                setTimeout(() => {
+                    gameState.s3Index++;
+                    if (gameState.s3Index < 5) {
+                        loadStage3Question();
+                    } else {
+                        showVictoryScreen(3);
+                    }
+                }, 1400);
+            } else {
+                playSound('error');
+                showToast("دقت کن! صورت تغییر نمی‌کند و مخرج در عدد کامل ضرب می‌شود. می‌توانی از راهنمای تصویری کمک بگیری!", false);
+            }
+        }
+
+        /* ==========================================================================
+           صفحه پایان مرحله و جشن پیروزی
+           ========================================================================== */
+        function showVictoryScreen(completedStage) {
+            playSound('success');
+            document.getElementById('victory-stars').innerText = toPersianDigits(gameState.stars);
+            const nextBtn = document.getElementById('next-stage-btn');
+
+            if (completedStage === 1) {
+                document.getElementById('victory-title').innerText = "مرحله اول با موفقیت تمام شد! 🔪🍰";
+                document.getElementById('victory-desc').innerText = "تو با برش زدن شکلات‌ها کشف کردی که تقسیم کسر بر عدد کامل، هر قطعه را کوچک‌تر می‌کند و مخرج را افزایش می‌دهد.";
+                nextBtn.classList.remove('hidden');
+            } else if (completedStage === 2) {
+                document.getElementById('victory-title').innerText = "مرحله دوم عالی بود! 🎨✨";
+                document.getElementById('victory-desc').innerText = "حالا هم به صورت تصویری و هم با اعداد می‌توانی تقسیم کسر بر عدد کامل را انجام دهی!";
+                nextBtn.classList.remove('hidden');
+            } else {
+                document.getElementById('victory-title').innerText = "تبریک! تو استاد تقسیم کسرها شدی! 🏆";
+                document.getElementById('victory-desc').innerText = "همه مراحل قنادی کسرها را با موفقیت پشت سر گذاشتی. می‌توانی دوباره بازی کنی تا سوالات جدیدتری ببینی!";
+                nextBtn.classList.add('hidden');
+            }
+
+            switchScreen('screen-victory');
+        }
+
+        function goNextStage() {
+            if (gameState.currentStage < 3) {
+                startStage(gameState.currentStage + 1);
+            } else {
+                goHome();
+            }
+        }
+    </script>
+</body>
+</html>
