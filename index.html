@@ -483,11 +483,18 @@
             s2UserDen: 2,
             s3Index: 0,
             s3CurrentQ: null,
-            usedSignatures: new Set()
+            s3HintVisible: false,
+            usedSignatures: new Set(),
+            pendingTransition: null,
+            feedback: null,
+            victory: null
         };
+        let currentScreen = 'screen-menu';
+        let pendingTransitionTimeout = null;
+        let mixRevealedAreas = new Set();
 
-        function setGameMode(newMode) {
-            playSound('click');
+        function setGameMode(newMode, playClick = true) {
+            if (playClick) playSound('click');
             gameState.mode = newMode;
             const btnDiv = document.getElementById('mode-btn-div');
             const btnMul = document.getElementById('mode-btn-mul');
@@ -658,18 +665,20 @@
             return { mode: 'div', num: 1, den: 2, divisor: 3 };
         }
 
+        const stage1Foods = ["تخته شکلات 🍫", "کیک توت‌فرنگی 🍰", "پیتزای مخصوص 🍕", "نان شیرمال 🥐", "باقلوای زعفرانی 🍯"];
+        const stage1People = ["دوست", "نفر", "کودک", "مهمان"];
+
         function buildRandomStage1Question() {
-            const foods = ["تخته شکلات 🍫", "کیک توت‌فرنگی 🍰", "پیتزای مخصوص 🍕", "نان شیرمال 🥐", "باقلوای زعفرانی 🍯"];
-            const people = ["دوست", "نفر", "کودک", "مهمان"];
             const prob = generateRandomFractionProblem({ maxDen: 4, maxDiv: 3 });
-            const item = pickRandom(foods);
+            const item = pickRandom(stage1Foods);
 
             if (prob.mode === 'div') {
                 const { num, den, divisor } = prob;
-                const person = pickRandom(people);
+                const person = pickRandom(stage1People);
                 return {
                     mode: 'div',
                     num, den, divisor,
+                    person,
                     totalRows: divisor,
                     highlightRows: 1,
                     item,
@@ -848,10 +857,12 @@
                 document.getElementById(id).classList.add('hidden');
             });
             document.getElementById(screenId).classList.remove('hidden');
+            currentScreen = screenId;
         }
 
         function goHome() {
             playSound('click');
+            clearPendingTransition();
             showScreen('screen-menu');
         }
 
@@ -877,9 +888,10 @@
 
         let toastTimeout = null;
         function showFeedback(message, isSuccess = true) {
+            gameState.feedback = { message, isSuccess };
             const wrapper = document.getElementById('feedback-toast-wrapper');
             const toast = document.getElementById('feedback-toast');
-            toast.innerHTML = message;
+            toast.textContent = message;
             wrapper.classList.remove('hidden');
             
             if (isSuccess) {
@@ -891,12 +903,57 @@
             clearTimeout(toastTimeout);
             toastTimeout = setTimeout(() => {
                 wrapper.classList.add('hidden');
+                gameState.feedback = null;
             }, 3400);
         }
 
+        function clearPendingTransition() {
+            if (pendingTransitionTimeout !== null) clearTimeout(pendingTransitionTimeout);
+            pendingTransitionTimeout = null;
+            gameState.pendingTransition = null;
+        }
+
+        function schedulePendingTransition(transition, delay = 1300) {
+            clearPendingTransition();
+            gameState.pendingTransition = transition;
+            pendingTransitionTimeout = setTimeout(resumePendingTransition, delay);
+        }
+
+        function resumePendingTransition() {
+            const transition = gameState.pendingTransition;
+            clearPendingTransition();
+            if (transition === 's1-next') {
+                loadStage1Question();
+            } else if (transition === 's1-victory') {
+                showVictory(
+                    "مرحله اول با موفقیت تمام شد!",
+                    "تو با برش زدن و مشاهده شکل، مفهوم ریاضی را کشف کردی. حالا آماده‌ای با کسر ساز تمرین کنی!",
+                    false
+                );
+            } else if (transition === 's2-next') {
+                loadStage2Question();
+            } else if (transition === 's2-victory') {
+                showVictory(
+                    "قهرمان کسر ساز شدی!",
+                    "حالا هم مفهوم شکل‌ها را بلدی و هم می‌توانی حاصل را بسازی. بریم سراغ آزمون نهایی!",
+                    false
+                );
+            } else if (transition === 's3-next') {
+                loadStage3Question();
+            } else if (transition === 's3-victory') {
+                showVictory(
+                    "تبریک! تو استاد کسرها شدی! 🎓",
+                    "تمام مراحل آموزشی را با موفقیت پشت سر گذاشتی. حالا هم مفهوم شکل‌ها را می‌دانی و هم با سرعت محاسبه می‌کنی!",
+                    false
+                );
+            }
+        }
+
         function startStage(stageNum) {
+            clearPendingTransition();
             playSound('click');
             gameState.currentStage = stageNum;
+            gameState.victory = null;
             if (stageNum === 1) {
                 gameState.s1Index = 0;
                 showScreen('screen-stage-1');
@@ -920,8 +977,9 @@
             }
         }
 
-        function showVictory(title, desc) {
-            playSound('success');
+        function showVictory(title, desc, playVictorySound = true) {
+            if (playVictorySound) playSound('success');
+            gameState.victory = { title, desc };
             document.getElementById('victory-title').innerText = title;
             document.getElementById('victory-desc').innerText = desc;
             document.getElementById('victory-stars').innerText = toPersianDigits(gameState.stars);
@@ -940,10 +998,11 @@
            ========================================================================== */
         let mixRevealedCount = 0;
 
-        function loadStage1Question() {
-            gameState.s1CurrentQ = buildRandomStage1Question();
+        function loadStage1Question(question = null, cutsMade = 0, revealedAreas = []) {
+            gameState.s1CurrentQ = question || buildRandomStage1Question();
             const q = gameState.s1CurrentQ;
-            gameState.s1CutsMade = 0;
+            gameState.s1CutsMade = cutsMade;
+            mixRevealedAreas = new Set(revealedAreas);
 
             document.getElementById('s1-q-num').innerText = toPersianDigits(gameState.s1Index + 1);
             document.getElementById('s1-concept-box').classList.add('hidden');
@@ -957,7 +1016,7 @@
                 `;
                 document.getElementById('s1-instruction').innerText = "👆 روی هر ۴ بخش مستطیل کلیک کن تا مساحت هر ناحیه را کشف کنی!";
                 document.getElementById('s1-instruction').classList.remove('hidden');
-                renderMixAreaModel();
+                renderMixAreaModel(revealedAreas);
                 return;
             }
 
@@ -967,11 +1026,16 @@
             document.getElementById('s1-instruction').classList.remove('hidden');
 
             renderStage1Board();
+            if (gameState.s1CutsMade >= totalCutsNeeded) {
+                document.getElementById('s1-instruction').classList.add('hidden');
+                showStage1ConceptAndOptions();
+            }
         }
 
-        function renderMixAreaModel() {
+        function renderMixAreaModel(revealedAreas = []) {
             const q = gameState.s1CurrentQ;
-            mixRevealedCount = 0;
+            mixRevealedAreas = new Set(revealedAreas);
+            mixRevealedCount = mixRevealedAreas.size;
             const container = document.getElementById('s1-board-container');
 
             const areas = [
@@ -1015,25 +1079,25 @@
                         </div>
 
                         <div class="flex-grow grid grid-cols-12 grid-rows-10 gap-1.5">
-                            <button onclick="revealMixArea(this)" data-revealed="false" class="col-span-7 row-span-6 ${areas[0].bg} border-2 rounded-2xl p-2 flex flex-col items-center justify-center shadow-sm hover:scale-[1.02] transition-all">
+                            <button onclick="revealMixArea(this)" data-area-index="0" data-revealed="false" class="col-span-7 row-span-6 ${areas[0].bg} border-2 rounded-2xl p-2 flex flex-col items-center justify-center shadow-sm hover:scale-[1.02] transition-all">
                                 <span class="text-[11px] font-bold opacity-80">${areas[0].title}</span>
                                 <span class="mix-val text-sm font-black mt-1">کلیک کن 👆</span>
                                 <span class="mix-ans hidden mt-1 font-bold">${areas[0].calc} = ${areas[0].resHTML}</span>
                             </button>
 
-                            <button onclick="revealMixArea(this)" data-revealed="false" class="col-span-5 row-span-6 ${areas[1].bg} border-2 rounded-2xl p-2 flex flex-col items-center justify-center shadow-sm hover:scale-[1.02] transition-all">
+                            <button onclick="revealMixArea(this)" data-area-index="1" data-revealed="false" class="col-span-5 row-span-6 ${areas[1].bg} border-2 rounded-2xl p-2 flex flex-col items-center justify-center shadow-sm hover:scale-[1.02] transition-all">
                                 <span class="text-[10px] sm:text-[11px] font-bold opacity-80">${areas[1].title}</span>
                                 <span class="mix-val text-xs sm:text-sm font-black mt-1">کلیک کن 👆</span>
                                 <span class="mix-ans hidden mt-1 font-bold">${areas[1].calc} = ${areas[1].resHTML}</span>
                             </button>
 
-                            <button onclick="revealMixArea(this)" data-revealed="false" class="col-span-7 row-span-4 ${areas[2].bg} border-2 rounded-2xl p-1.5 flex flex-col items-center justify-center shadow-sm hover:scale-[1.02] transition-all">
+                            <button onclick="revealMixArea(this)" data-area-index="2" data-revealed="false" class="col-span-7 row-span-4 ${areas[2].bg} border-2 rounded-2xl p-1.5 flex flex-col items-center justify-center shadow-sm hover:scale-[1.02] transition-all">
                                 <span class="text-[10px] sm:text-[11px] font-bold opacity-80">${areas[2].title}</span>
                                 <span class="mix-val text-xs sm:text-sm font-black">کلیک کن 👆</span>
                                 <span class="mix-ans hidden font-bold">${areas[2].calc} = ${areas[2].resHTML}</span>
                             </button>
 
-                            <button onclick="revealMixArea(this)" data-revealed="false" class="col-span-5 row-span-4 ${areas[3].bg} border-2 rounded-2xl p-1.5 flex flex-col items-center justify-center shadow-sm hover:scale-[1.02] transition-all">
+                            <button onclick="revealMixArea(this)" data-area-index="3" data-revealed="false" class="col-span-5 row-span-4 ${areas[3].bg} border-2 rounded-2xl p-1.5 flex flex-col items-center justify-center shadow-sm hover:scale-[1.02] transition-all">
                                 <span class="text-[10px] font-bold opacity-80">${areas[3].title}</span>
                                 <span class="mix-val text-xs font-black">کلیک کن 👆</span>
                                 <span class="mix-ans hidden font-bold">${areas[3].calc} = ${areas[3].resHTML}</span>
@@ -1042,46 +1106,54 @@
                     </div>
                 </div>
             `;
+            mixRevealedAreas.forEach(index => {
+                const button = container.querySelector(`[data-area-index="${index}"]`);
+                if (button) applyMixAreaReveal(button);
+            });
+            if (mixRevealedCount === 4) showMixAreaConceptAndOptions();
         }
 
         function revealMixArea(btn) {
             if (btn.getAttribute('data-revealed') === 'true') return;
-            btn.setAttribute('data-revealed', 'true');
             playSound('slice');
+            const areaIndex = Number(btn.getAttribute('data-area-index'));
+            if (!Number.isInteger(areaIndex) || areaIndex < 0 || areaIndex > 3) return;
+            mixRevealedAreas.add(areaIndex);
+            mixRevealedCount = mixRevealedAreas.size;
+            applyMixAreaReveal(btn);
+            if (mixRevealedCount === 4) showMixAreaConceptAndOptions();
+        }
+
+        function applyMixAreaReveal(btn) {
+            btn.setAttribute('data-revealed', 'true');
             btn.querySelector('.mix-val').classList.add('hidden');
             btn.querySelector('.mix-ans').classList.remove('hidden');
             btn.classList.add('ring-2', 'ring-purple-500');
-            mixRevealedCount++;
+        }
 
-            if (mixRevealedCount === 4) {
-                const q = gameState.s1CurrentQ;
-                document.getElementById('s1-instruction').classList.add('hidden');
-                const conceptBox = document.getElementById('s1-concept-box');
-                const correctNum = q.impNum1 * q.impNum2;
-                const correctDen = q.d1 * q.d2;
+        function showMixAreaConceptAndOptions() {
+            const q = gameState.s1CurrentQ;
+            document.getElementById('s1-instruction').classList.add('hidden');
+            document.getElementById('s1-concept-text').innerHTML = `
+                ببین! کل فرش از <strong>۴ ناحیه</strong> تشکیل شده است. اگر به جای جمع کردن این ۴ بخش، از ابتدا هر عدد مخلوط را به کسر تبدیل کنیم:<br>
+                <strong>${toPersianDigits(q.impNum1)}/${toPersianDigits(q.d1)} × ${toPersianDigits(q.impNum2)}/${toPersianDigits(q.d2)}</strong>، دقیقاً مساحت کل هر ۴ ناحیه به دست می‌آید!
+            `;
 
-                document.getElementById('s1-concept-text').innerHTML = `
-                    ببین! کل فرش از <strong>۴ ناحیه</strong> تشکیل شده است. اگر به جای جمع کردن این ۴ بخش، از ابتدا هر عدد مخلوط را به کسر تبدیل کنیم:<br>
-                    <strong>${toPersianDigits(q.impNum1)}/${toPersianDigits(q.d1)} × ${toPersianDigits(q.impNum2)}/${toPersianDigits(q.d2)}</strong>، دقیقاً مساحت کل هر ۴ ناحیه به دست می‌آید!
-                `;
-
-                const trapWhole = q.w1 * q.w2;
-                const trapNum = trapWhole * correctDen + (q.n1 * q.n2);
-                let options = [
-                    { num: correctNum, den: correctDen, correct: true },
-                    { num: trapNum, den: correctDen, correct: false },
-                    { num: q.impNum1 + q.impNum2, den: correctDen, correct: false }
-                ].sort(() => Math.random() - 0.5);
-
-                const optContainer = document.getElementById('s1-options');
-                optContainer.innerHTML = options.map(opt => `
-                    <button onclick="answerStage1(${opt.correct})" class="btn-3d bg-white hover:bg-purple-100 border-2 border-purple-400 px-4 py-2 rounded-2xl text-purple-950 font-black">
-                        ${renderFractionHTML(opt.num, opt.den, "text-lg")}
-                    </button>
-                `).join('');
-
-                conceptBox.classList.remove('hidden');
-            }
+            const correctNum = q.impNum1 * q.impNum2;
+            const correctDen = q.d1 * q.d2;
+            const trapWhole = q.w1 * q.w2;
+            const trapNum = trapWhole * correctDen + (q.n1 * q.n2);
+            const options = [
+                { num: correctNum, den: correctDen, correct: true },
+                { num: trapNum, den: correctDen, correct: false },
+                { num: q.impNum1 + q.impNum2, den: correctDen, correct: false }
+            ].sort(() => Math.random() - 0.5);
+            document.getElementById('s1-options').innerHTML = options.map(opt => `
+                <button onclick="answerStage1(${opt.correct})" class="btn-3d bg-white hover:bg-purple-100 border-2 border-purple-400 px-4 py-2 rounded-2xl text-purple-950 font-black">
+                    ${renderFractionHTML(opt.num, opt.den, "text-lg")}
+                </button>
+            `).join('');
+            document.getElementById('s1-concept-box').classList.remove('hidden');
         }
 
         function renderStage1Board() {
@@ -1292,21 +1364,13 @@
         }
 
         function answerStage1(isCorrect) {
+            if (gameState.pendingTransition) return;
             if (isCorrect) {
                 playSound('success');
                 addStars(2);
                 showFeedback("🎉 آفرین! کاملاً درست فهمیدی (+۲ ستاره)", true);
                 gameState.s1Index++;
-                if (gameState.s1Index < 3) {
-                    setTimeout(loadStage1Question, 1300);
-                } else {
-                    setTimeout(() => {
-                        showVictory(
-                            "مرحله اول با موفقیت تمام شد!",
-                            "تو با برش زدن و مشاهده شکل، مفهوم ریاضی را کشف کردی. حالا آماده‌ای با کسر ساز تمرین کنی!"
-                        );
-                    }, 1300);
-                }
+                schedulePendingTransition(gameState.s1Index < 3 ? 's1-next' : 's1-victory');
             } else {
                 playSound('error');
                 showFeedback("🤔 دقت کن! تعداد کل قطعات جدید مخرج را می‌سازد.", false);
@@ -1316,11 +1380,11 @@
         /* ==========================================================================
            منطق مرحله ۲: تمرین با کسر ساز تصویری
            ========================================================================== */
-        function loadStage2Question() {
-            gameState.s2CurrentQ = buildRandomStage2Question();
+        function loadStage2Question(question = null, userNum = null, userDen = null) {
+            gameState.s2CurrentQ = question || buildRandomStage2Question();
             const q = gameState.s2CurrentQ;
-            gameState.s2UserNum = 1;
-            gameState.s2UserDen = Math.max(2, q.totalCols);
+            gameState.s2UserNum = Number.isInteger(userNum) ? userNum : 1;
+            gameState.s2UserDen = Number.isInteger(userDen) ? userDen : Math.max(2, q.totalCols);
 
             document.getElementById('s2-q-num').innerText = toPersianDigits(gameState.s2Index + 1);
             
@@ -1392,6 +1456,7 @@
         }
 
         function checkStage2Answer() {
+            if (gameState.pendingTransition) return;
             const q = gameState.s2CurrentQ;
             const correctNum = q.ansNum;
             const correctDen = q.ansDen;
@@ -1404,16 +1469,7 @@
                 addStars(3);
                 showFeedback(`🌟 فوق‌العاده است! پاسخ درست ${toPersianDigits(correctNum)}/${toPersianDigits(correctDen)} را ساختی (+۳ ستاره)`, true);
                 gameState.s2Index++;
-                if (gameState.s2Index < 4) {
-                    setTimeout(loadStage2Question, 1400);
-                } else {
-                    setTimeout(() => {
-                        showVictory(
-                            "قهرمان کسر ساز شدی!",
-                            "حالا هم مفهوم شکل‌ها را بلدی و هم می‌توانی حاصل را بسازی. بریم سراغ آزمون نهایی!"
-                        );
-                    }, 1400);
-                }
+                schedulePendingTransition(gameState.s2Index < 4 ? 's2-next' : 's2-victory', 1400);
             } else {
                 playSound('error');
                 if (q.mode === 'div') {
@@ -1441,9 +1497,10 @@
         /* ==========================================================================
            منطق مرحله ۳: آزمون ستاره‌ای با راهنمای تصویری اختیاری
            ========================================================================== */
-        function loadStage3Question() {
-            gameState.s3CurrentQ = buildRandomStage3Question(gameState.s3Index);
+        function loadStage3Question(question = null, hintVisible = false) {
+            gameState.s3CurrentQ = question || buildRandomStage3Question(gameState.s3Index);
             const q = gameState.s3CurrentQ;
+            gameState.s3HintVisible = hintVisible;
             document.getElementById('s3-q-num').innerText = toPersianDigits(gameState.s3Index + 1);
             document.getElementById('s3-hint-box').classList.add('hidden');
 
@@ -1485,18 +1542,25 @@
                     ${renderFractionHTML(opt.num, opt.den, "text-2xl text-slate-800")}
                 </button>
             `).join('');
+            if (hintVisible) renderS3VisualHint();
         }
 
         function toggleS3VisualHint() {
             playSound('click');
             const hintBox = document.getElementById('s3-hint-box');
-            const q = gameState.s3CurrentQ;
-
             if (!hintBox.classList.contains('hidden')) {
                 hintBox.classList.add('hidden');
+                gameState.s3HintVisible = false;
                 return;
             }
 
+            renderS3VisualHint();
+            gameState.s3HintVisible = true;
+        }
+
+        function renderS3VisualHint() {
+            const q = gameState.s3CurrentQ;
+            const hintBox = document.getElementById('s3-hint-box');
             document.getElementById('s3-hint-text').innerText = q.hintText;
 
             const grid = document.getElementById('s3-hint-grid');
@@ -1521,6 +1585,7 @@
         }
 
         function checkStage3Answer(optionIndex) {
+            if (gameState.pendingTransition) return;
             const q = gameState.s3CurrentQ;
             const chosen = q.options[optionIndex];
 
@@ -1534,21 +1599,475 @@
                 showFeedback(msg, true);
 
                 gameState.s3Index++;
-                if (gameState.s3Index < 5) {
-                    setTimeout(loadStage3Question, 1400);
-                } else {
-                    setTimeout(() => {
-                        showVictory(
-                            "تبریک! تو استاد کسرها شدی! 🎓",
-                            "تمام مراحل آموزشی را با موفقیت پشت سر گذاشتی. حالا هم مفهوم شکل‌ها را می‌دانی و هم با سرعت محاسبه می‌کنی!"
-                        );
-                    }, 1400);
-                }
+                schedulePendingTransition(gameState.s3Index < 5 ? 's3-next' : 's3-victory', 1400);
             } else {
                 playSound('error');
                 showFeedback("❌ اشتباه شد! از دکمه «راهنمای تصویری» کمک بگیر و دوباره تلاش کن.", false);
             }
         }
+
+        function isIntegerInRange(value, min, max) {
+            return Number.isSafeInteger(value) && value >= min && value <= max;
+        }
+
+        function normalizeStage1Question(question) {
+            if (!question || typeof question !== 'object') return null;
+
+            if (question.mode === 'div' &&
+                stage1Foods.includes(question.item) &&
+                isIntegerInRange(question.den, 2, 4) &&
+                isIntegerInRange(question.num, 1, question.den - 1) &&
+                isIntegerInRange(question.divisor, 2, 3) &&
+                stage1People.includes(question.person)) {
+                return {
+                    mode: 'div',
+                    num: question.num,
+                    den: question.den,
+                    divisor: question.divisor,
+                    person: question.person,
+                    totalRows: question.divisor,
+                    highlightRows: 1,
+                    item: question.item,
+                    story: `ما ${renderFractionHTML(question.num, question.den)} از یک ${question.item} داریم و می‌خواهیم آن را بین <strong>${toPersianDigits(question.divisor)} ${question.person}</strong> به طور مساوی تقسیم کنیم.`,
+                    promptLabel: 'پس سهم هر نفر چقدر است؟'
+                };
+            }
+
+            if (question.mode === 'mul' &&
+                stage1Foods.includes(question.item) &&
+                isIntegerInRange(question.den, 2, 4) &&
+                isIntegerInRange(question.num, 1, question.den - 1) &&
+                isIntegerInRange(question.den2, 2, 3) &&
+                isIntegerInRange(question.num2, 1, question.den2 - 1)) {
+                return {
+                    mode: 'mul',
+                    num: question.num,
+                    den: question.den,
+                    num2: question.num2,
+                    den2: question.den2,
+                    totalRows: question.den2,
+                    highlightRows: question.num2,
+                    item: question.item,
+                    story: `روی میز ${renderFractionHTML(question.num, question.den)} از یک ${question.item} باقی مانده است و می‌خواهیم ${renderFractionHTML(question.num2, question.den2)} از <strong>همین مقدار</strong> را بخوریم (${renderFractionHTML(question.num, question.den)} × ${renderFractionHTML(question.num2, question.den2)}).`,
+                    promptLabel: 'پس مقدار خورده‌شده از کل شیرینی چقدر است؟'
+                };
+            }
+
+            if (question.mode === 'mix' &&
+                isIntegerInRange(question.w1, 1, 2) &&
+                isIntegerInRange(question.d1, 2, 3) &&
+                isIntegerInRange(question.n1, 1, question.d1 - 1) &&
+                isIntegerInRange(question.w2, 1, 2) &&
+                isIntegerInRange(question.d2, 2, 3) &&
+                isIntegerInRange(question.n2, 1, question.d2 - 1)) {
+                const impNum1 = question.w1 * question.d1 + question.n1;
+                const impNum2 = question.w2 * question.d2 + question.n2;
+                if (question.impNum1 !== impNum1 || question.impNum2 !== impNum2) return null;
+                return {
+                    mode: 'mix',
+                    w1: question.w1, n1: question.n1, d1: question.d1,
+                    w2: question.w2, n2: question.n2, d2: question.d2,
+                    impNum1, impNum2
+                };
+            }
+            return null;
+        }
+
+        function normalizeStage2Question(question) {
+            if (!question || typeof question !== 'object') return null;
+            let result;
+            if (question.mode === 'div' &&
+                isIntegerInRange(question.den, 2, 5) &&
+                isIntegerInRange(question.num, 1, question.den - 1) &&
+                isIntegerInRange(question.divisor, 2, 4)) {
+                result = {
+                    mode: 'div',
+                    num: question.num,
+                    den: question.den,
+                    divisor: question.divisor,
+                    ansNum: question.num,
+                    ansDen: question.den * question.divisor,
+                    totalCols: question.den,
+                    totalRows: question.divisor,
+                    activeCols: question.num,
+                    activeRows: 1
+                };
+            } else if (question.mode === 'mul' &&
+                isIntegerInRange(question.den, 2, 5) &&
+                isIntegerInRange(question.num, 1, question.den - 1) &&
+                isIntegerInRange(question.den2, 2, 4) &&
+                isIntegerInRange(question.num2, 1, question.den2 - 1)) {
+                result = {
+                    mode: 'mul',
+                    num: question.num, den: question.den,
+                    num2: question.num2, den2: question.den2,
+                    ansNum: question.num * question.num2,
+                    ansDen: question.den * question.den2,
+                    totalCols: question.den,
+                    totalRows: question.den2,
+                    activeCols: question.num,
+                    activeRows: question.num2
+                };
+            } else if (question.mode === 'mix' &&
+                isIntegerInRange(question.w1, 1, 2) &&
+                isIntegerInRange(question.d1, 2, 3) &&
+                isIntegerInRange(question.n1, 1, question.d1 - 1) &&
+                isIntegerInRange(question.w2, 1, 2) &&
+                isIntegerInRange(question.d2, 2, 3) &&
+                isIntegerInRange(question.n2, 1, question.d2 - 1)) {
+                const impNum1 = question.w1 * question.d1 + question.n1;
+                const impNum2 = question.w2 * question.d2 + question.n2;
+                if (question.impNum1 !== impNum1 || question.impNum2 !== impNum2) return null;
+                result = {
+                    mode: 'mix',
+                    w1: question.w1, n1: question.n1, d1: question.d1,
+                    w2: question.w2, n2: question.n2, d2: question.d2,
+                    impNum1, impNum2,
+                    ansNum: impNum1 * impNum2,
+                    ansDen: question.d1 * question.d2,
+                    totalCols: question.d1,
+                    totalRows: question.d2,
+                    activeCols: impNum1,
+                    activeRows: impNum2
+                };
+            } else {
+                return null;
+            }
+            return result;
+        }
+
+        function normalizeStage3Question(question) {
+            if (!question || typeof question !== 'object') return null;
+            let base;
+            if (question.mode === 'div' &&
+                isIntegerInRange(question.den, 2, 6) &&
+                isIntegerInRange(question.num, 1, question.den - 1) &&
+                isIntegerInRange(question.divisor, 2, 5)) {
+                base = {
+                    mode: 'div', num: question.num, den: question.den,
+                    divisor: question.divisor
+                };
+            } else if (question.mode === 'mul' &&
+                isIntegerInRange(question.den, 2, 6) &&
+                isIntegerInRange(question.num, 1, question.den - 1) &&
+                isIntegerInRange(question.den2, 2, 5) &&
+                isIntegerInRange(question.num2, 1, question.den2 - 1)) {
+                base = {
+                    mode: 'mul', num: question.num, den: question.den,
+                    num2: question.num2, den2: question.den2
+                };
+            } else if (question.mode === 'mix' &&
+                isIntegerInRange(question.w1, 1, 2) &&
+                isIntegerInRange(question.d1, 2, 3) &&
+                isIntegerInRange(question.n1, 1, question.d1 - 1) &&
+                isIntegerInRange(question.w2, 1, 2) &&
+                isIntegerInRange(question.d2, 2, 3) &&
+                isIntegerInRange(question.n2, 1, question.d2 - 1)) {
+                const impNum1 = question.w1 * question.d1 + question.n1;
+                const impNum2 = question.w2 * question.d2 + question.n2;
+                if (question.impNum1 !== impNum1 || question.impNum2 !== impNum2) return null;
+                base = {
+                    mode: 'mix',
+                    w1: question.w1, n1: question.n1, d1: question.d1,
+                    w2: question.w2, n2: question.n2, d2: question.d2,
+                    impNum1, impNum2
+                };
+            } else {
+                return null;
+            }
+
+            let rawNum, rawDen, totalCols, totalRows, activeCols, activeRows;
+            if (base.mode === 'div') {
+                rawNum = base.num;
+                rawDen = base.den * base.divisor;
+                totalCols = base.den;
+                totalRows = base.divisor;
+                activeCols = base.num;
+                activeRows = 1;
+            } else if (base.mode === 'mul') {
+                rawNum = base.num * base.num2;
+                rawDen = base.den * base.den2;
+                totalCols = base.den;
+                totalRows = base.den2;
+                activeCols = base.num;
+                activeRows = base.num2;
+            } else {
+                rawNum = base.impNum1 * base.impNum2;
+                rawDen = base.d1 * base.d2;
+                totalCols = base.d1;
+                totalRows = base.d2;
+                activeCols = base.impNum1;
+                activeRows = base.impNum2;
+            }
+
+            const common = gcd(rawNum, rawDen);
+            const simpNum = rawNum / common;
+            const simpDen = rawDen / common;
+            if (question.rawNum !== rawNum || question.rawDen !== rawDen ||
+                question.simpNum !== simpNum || question.simpDen !== simpDen ||
+                question.totalCols !== totalCols || question.totalRows !== totalRows ||
+                question.activeCols !== activeCols || question.activeRows !== activeRows ||
+                typeof question.hintText !== 'string' || question.hintText.length > 2000 ||
+                !Array.isArray(question.options) || question.options.length !== 4) {
+                return null;
+            }
+
+            let correctOptions = 0;
+            const options = [];
+            for (const option of question.options) {
+                if (!option || typeof option !== 'object' ||
+                    !isIntegerInRange(option.num, 1, 100000) ||
+                    !isIntegerInRange(option.den, 1, 100000) ||
+                    typeof option.correct !== 'boolean' ||
+                    (option.bonus !== undefined && typeof option.bonus !== 'boolean')) {
+                    return null;
+                }
+                const isRaw = option.num === rawNum && option.den === rawDen;
+                const isSimplified = option.num === simpNum && option.den === simpDen;
+                const shouldBeCorrect = isRaw || isSimplified;
+                const shouldBeBonus = common > 1 && isSimplified;
+                if (option.correct !== shouldBeCorrect || (option.bonus === true) !== shouldBeBonus ||
+                    options.some(item => item.num === option.num && item.den === option.den)) {
+                    return null;
+                }
+                if (option.correct) correctOptions++;
+                options.push({
+                    num: option.num,
+                    den: option.den,
+                    correct: option.correct,
+                    ...(option.bonus !== undefined ? { bonus: shouldBeBonus } : {})
+                });
+            }
+            if (correctOptions !== (common > 1 ? 2 : 1)) return null;
+            return {
+                ...base,
+                rawNum, rawDen, simpNum, simpDen,
+                totalCols, totalRows, activeCols, activeRows,
+                hintText: question.hintText,
+                options
+            };
+        }
+
+        function normalizeGameData(data) {
+            if (!data || typeof data !== 'object' || data.schemaVersion !== 1 ||
+                !data.settings || typeof data.settings.soundEnabled !== 'boolean' ||
+                !data.progress || typeof data.progress !== 'object') {
+                return null;
+            }
+
+            const progress = data.progress;
+            const validScreens = [
+                'screen-menu', 'screen-stage-1', 'screen-stage-2',
+                'screen-stage-3', 'screen-victory'
+            ];
+            const validModes = ['div', 'mul', 'mix'];
+            const validTransitions = [
+                's1-next', 's1-victory', 's2-next',
+                's2-victory', 's3-next', 's3-victory'
+            ];
+            if (!validScreens.includes(progress.screen) ||
+                !validModes.includes(progress.mode) ||
+                !isIntegerInRange(progress.stars, 0, 1000000) ||
+                !isIntegerInRange(progress.currentStage, 0, 3) ||
+                !isIntegerInRange(progress.s1Index, 0, 3) ||
+                !isIntegerInRange(progress.s1CutsMade, 0, 10) ||
+                !isIntegerInRange(progress.s2Index, 0, 4) ||
+                !isIntegerInRange(progress.s2UserNum, 1, 36) ||
+                !isIntegerInRange(progress.s2UserDen, 2, 36) ||
+                !isIntegerInRange(progress.s3Index, 0, 5) ||
+                typeof progress.s3HintVisible !== 'boolean' ||
+                !Array.isArray(progress.s1MixRevealedAreas) ||
+                !Array.isArray(progress.usedSignatures) ||
+                progress.usedSignatures.length > 500 ||
+                (progress.usedSignatures.some(signature =>
+                    typeof signature !== 'string' || signature.length > 100 ||
+                    !/^[a-z0-9:_/*.-]+$/.test(signature)) ||
+                    new Set(progress.usedSignatures).size !== progress.usedSignatures.length) ||
+                (progress.pendingTransition !== null &&
+                    !validTransitions.includes(progress.pendingTransition)) ||
+                typeof progress.tutorialVisible !== 'boolean' ||
+                (progress.feedback !== null && (!progress.feedback ||
+                    typeof progress.feedback.message !== 'string' ||
+                    progress.feedback.message.length > 500 ||
+                    typeof progress.feedback.isSuccess !== 'boolean')) ||
+                (progress.victory !== null && (!progress.victory ||
+                    typeof progress.victory.title !== 'string' ||
+                    typeof progress.victory.desc !== 'string' ||
+                    progress.victory.title.length > 200 ||
+                    progress.victory.desc.length > 1000))) {
+                return null;
+            }
+
+            const s1Question = progress.s1CurrentQ === null
+                ? null
+                : normalizeStage1Question(progress.s1CurrentQ);
+            const s2Question = progress.s2CurrentQ === null
+                ? null
+                : normalizeStage2Question(progress.s2CurrentQ);
+            const s3Question = progress.s3CurrentQ === null
+                ? null
+                : normalizeStage3Question(progress.s3CurrentQ);
+            if ((progress.s1CurrentQ !== null && !s1Question) ||
+                (progress.s2CurrentQ !== null && !s2Question) ||
+                (progress.s3CurrentQ !== null && !s3Question) ||
+                progress.s1MixRevealedAreas.some(index =>
+                    !Number.isInteger(index) || index < 0 || index > 3) ||
+                new Set(progress.s1MixRevealedAreas).size !== progress.s1MixRevealedAreas.length ||
+                (s1Question
+                    ? (s1Question.mode === 'mix'
+                        ? progress.s1CutsMade !== 0
+                        : progress.s1CutsMade > s1Question.totalRows - 1)
+                    : progress.s1CutsMade !== 0) ||
+                (!s1Question || s1Question.mode !== 'mix') && progress.s1MixRevealedAreas.length !== 0 ||
+                (s1Question && s1Question.mode === 'mix' &&
+                    progress.s1MixRevealedAreas.length > 4) ||
+                (progress.screen === 'screen-stage-1' &&
+                    (progress.currentStage !== 1 || !s1Question || s1Question.mode !== progress.mode)) ||
+                (progress.screen === 'screen-stage-2' &&
+                    (progress.currentStage !== 2 || !s2Question || s2Question.mode !== progress.mode)) ||
+                (progress.screen === 'screen-stage-3' &&
+                    (progress.currentStage !== 3 || !s3Question || s3Question.mode !== progress.mode)) ||
+                (progress.screen === 'screen-victory' &&
+                    (progress.currentStage < 1 || !progress.victory)) ||
+                (progress.pendingTransition !== null &&
+                    ((progress.pendingTransition.startsWith('s1-') &&
+                        (progress.screen !== 'screen-stage-1' || progress.currentStage !== 1)) ||
+                     (progress.pendingTransition.startsWith('s2-') &&
+                        (progress.screen !== 'screen-stage-2' || progress.currentStage !== 2)) ||
+                     (progress.pendingTransition.startsWith('s3-') &&
+                        (progress.screen !== 'screen-stage-3' || progress.currentStage !== 3))))) {
+                return null;
+            }
+
+            return {
+                soundEnabled: data.settings.soundEnabled,
+                progress: {
+                    screen: progress.screen,
+                    mode: progress.mode,
+                    stars: progress.stars,
+                    currentStage: progress.currentStage,
+                    s1Index: progress.s1Index,
+                    s1CutsMade: progress.s1CutsMade,
+                    s1CurrentQ: s1Question,
+                    s1MixRevealedAreas: [...progress.s1MixRevealedAreas],
+                    s2Index: progress.s2Index,
+                    s2CurrentQ: s2Question,
+                    s2UserNum: progress.s2UserNum,
+                    s2UserDen: progress.s2UserDen,
+                    s3Index: progress.s3Index,
+                    s3CurrentQ: s3Question,
+                    s3HintVisible: progress.s3HintVisible,
+                    usedSignatures: [...progress.usedSignatures],
+                    pendingTransition: progress.pendingTransition,
+                    feedback: progress.feedback
+                        ? { ...progress.feedback }
+                        : null,
+                    victory: progress.victory
+                        ? { ...progress.victory }
+                        : null,
+                    tutorialVisible: progress.tutorialVisible
+                }
+            };
+        }
+
+        function saveGameData() {
+            return {
+                schemaVersion: 1,
+                settings: { soundEnabled },
+                progress: {
+                    screen: currentScreen,
+                    mode: gameState.mode,
+                    stars: gameState.stars,
+                    currentStage: gameState.currentStage,
+                    s1Index: gameState.s1Index,
+                    s1CutsMade: gameState.s1CutsMade,
+                    s1CurrentQ: gameState.s1CurrentQ ? { ...gameState.s1CurrentQ } : null,
+                    s1MixRevealedAreas: [...mixRevealedAreas].sort(),
+                    s2Index: gameState.s2Index,
+                    s2CurrentQ: gameState.s2CurrentQ ? { ...gameState.s2CurrentQ } : null,
+                    s2UserNum: gameState.s2UserNum,
+                    s2UserDen: gameState.s2UserDen,
+                    s3Index: gameState.s3Index,
+                    s3CurrentQ: gameState.s3CurrentQ
+                        ? {
+                            ...gameState.s3CurrentQ,
+                            options: gameState.s3CurrentQ.options.map(option => ({ ...option }))
+                        }
+                        : null,
+                    s3HintVisible: gameState.s3HintVisible,
+                    usedSignatures: [...gameState.usedSignatures],
+                    pendingTransition: gameState.pendingTransition,
+                    feedback: gameState.feedback ? { ...gameState.feedback } : null,
+                    victory: gameState.victory ? { ...gameState.victory } : null,
+                    tutorialVisible: !document.getElementById('tutorial-modal').classList.contains('hidden')
+                }
+            };
+        }
+
+        function loadGameData(data) {
+            const saved = normalizeGameData(data);
+            if (!saved) {
+                console.warn('Ignoring invalid saved game data.');
+                return;
+            }
+
+            clearPendingTransition();
+            clearTimeout(toastTimeout);
+            toastTimeout = null;
+            const {
+                screen,
+                usedSignatures,
+                s1MixRevealedAreas,
+                tutorialVisible,
+                ...restoredState
+            } = saved.progress;
+            Object.assign(gameState, restoredState);
+            gameState.usedSignatures = new Set(usedSignatures);
+            mixRevealedAreas = new Set(s1MixRevealedAreas);
+            soundEnabled = saved.soundEnabled;
+            document.getElementById('sound-toggle').innerText = soundEnabled ? '🔊' : '🔇';
+            document.getElementById('star-count').innerText = toPersianDigits(gameState.stars);
+            document.getElementById('feedback-toast-wrapper').classList.add('hidden');
+            document.getElementById('tutorial-modal').classList.add('hidden');
+            document.getElementById('tutorial-modal').classList.remove('flex');
+            setGameMode(gameState.mode, false);
+
+            if (screen === 'screen-menu') {
+                showScreen(screen);
+            } else if (screen === 'screen-stage-1') {
+                showScreen(screen);
+                loadStage1Question(
+                    gameState.s1CurrentQ,
+                    gameState.s1CutsMade,
+                    s1MixRevealedAreas
+                );
+            } else if (screen === 'screen-stage-2') {
+                showScreen(screen);
+                loadStage2Question(
+                    gameState.s2CurrentQ,
+                    gameState.s2UserNum,
+                    gameState.s2UserDen
+                );
+            } else if (screen === 'screen-stage-3') {
+                showScreen(screen);
+                loadStage3Question(gameState.s3CurrentQ, gameState.s3HintVisible);
+            } else {
+                showVictory(gameState.victory.title, gameState.victory.desc, false);
+            }
+
+            if (gameState.feedback) {
+                showFeedback(gameState.feedback.message, gameState.feedback.isSuccess);
+            }
+            if (tutorialVisible) {
+                updateTutorialModalContent();
+                document.getElementById('tutorial-modal').classList.remove('hidden');
+                document.getElementById('tutorial-modal').classList.add('flex');
+            }
+            if (gameState.pendingTransition) resumePendingTransition();
+        }
+
+        window.saveGameData = saveGameData;
+        window.loadGameData = loadGameData;
     </script>
 </body>
 </html>
